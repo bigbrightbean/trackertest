@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌸 Daily Bloom 🌸</title>
+
+<style>
+
+:root{
+  --bg:#fff0f5;
+  --card:#ffe4ec;
+  --soft:#ffd6e0;
+  --border:#f8b7c5;
+  --text:#5a3e45;
+  --sub:#a67882;
+  --focus:#ff9bb8;
+}
+
+/* 🌸 GLOBAL PINK SELECTION */
+::selection{
+  background:#ff9bb8;
+  color:white;
+}
+
+/* 🌸 GLOBAL PINK FOCUS (kills blue ring everywhere) */
+*:focus{
+  outline:none;
+  box-shadow:0 0 0 2px rgba(255,155,184,0.4);
+}
+
+/* 🌸 DRAG HIGHLIGHT */
+.row.dragging{
+  opacity:0.5;
+  box-shadow:0 0 12px rgba(255,155,184,0.6);
+}
+/* 🌸 DRAG HANDLE */
+.drag-handle{
+  width:36px;
+  height:36px;
+  border-radius:10px; /* square style */
+  border:2px solid var(--border);
+  background:transparent;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  cursor:grab;
+  font-size:16px;
+  position:relative;
+  transition:0.2s;
+}
+
+.drag-handle:hover{
+  background:#ffe4ec; /* same hover as panel */
+}
+
+/* 🌸 show only in edit mode */
+.edit-mode .drag-handle{
+  display:flex;
+}
+
+.drag-handle:active{
+  cursor:grabbing;
+  opacity:1;
+}
+
+/* tooltip (edit mode only) */
+.edit-mode .drag-handle:hover::after{
+  content:"Drag to reorder tasks";
+  position:absolute;
+  bottom:36px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:11px;
+  background:white;
+  border:1px solid var(--border);
+  padding:2px 6px;
+  border-radius:6px;
+  white-space:nowrap;
+}
+
+body{
+  margin:0;
+  background:var(--bg);
+  font-family:-apple-system;
+  color:var(--text);
+  overflow:hidden;
+}
+
+/* 🌸 FLOATING PETALS */
+.floating{
+  position:fixed;
+  top:-20px;
+  font-size:16px;
+  opacity:0.4;
+  animation:fall linear infinite;
+}
+
+@keyframes fall{
+  0%{transform:translateX(0px) translateY(0) rotate(0deg);}
+  100%{transform:translateX(-8px) translateY(110vh) rotate(300deg);}
+}
+
+/* HEADER */
+header{
+  text-align:center;
+  padding:20px;
+  position:relative;
+}
+
+/* TITLE BLOCK */
+.title-wrap{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:8px;
+}
+
+.title{ font-size:26px; }
+.sub{ font-size:14px; color:var(--sub); }
+
+/* ✏️ BUTTON */
+.edit-pen{
+  width:28px;
+  height:28px;
+  border-radius:8px;
+  background:var(--soft);
+  border:1px solid var(--border);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  position:relative;
+}
+
+.edit-mode .edit-pen{ display:flex; }
+
+/* TOOLTIP */
+/* 🌸 UNIVERSAL TOOLTIP (CORRECT FIX) */
+.edit-mode .edit-pen:hover::after,
+.edit-mode .edit-btn:hover::after,
+.edit-mode .panel button:hover::after,
+.edit-mode .drag-handle:hover::after{
+  position:absolute;
+  bottom:38px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:11px;
+  background:white;
+  border:1px solid var(--border);
+  padding:2px 6px;
+  border-radius:6px;
+  white-space:nowrap;
+  z-index:999;
+  pointer-events:none;
+}
+
+.edit-title:hover::after{content:"Edit title";}
+.edit-sub:hover::after{content:"Edit subtitle";}
+
+/* SETTINGS BUTTON */
+.menu-btn{
+  position:absolute;
+  right:16px;
+  top:20px;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:var(--soft);
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:20px;
+  cursor:pointer;
+}
+
+.menu-btn:hover::after{
+  content:"Edit mode";
+  position:absolute;
+  top:50px;
+  font-size:12px;
+  background:white;
+  border:1px solid var(--border);
+  padding:4px 8px;
+  border-radius:6px;
+}
+
+/* CONTAINER */
+.container{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.inner{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+}
+
+/* ROW */
+.row{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+  cursor:grab;
+}
+
+/* TASK */
+.task{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:10px;
+  width:300px;
+  flex:0 0 auto;
+  caret-color:var(--focus);
+}
+
+
+/* PETALS */
+.petals{
+  display:flex;
+  gap:6px;
+  flex:0 0 auto;
+}
+
+/* PETAL */
+.petal{
+  width:32px;
+  height:32px;
+  border-radius:10px;
+  background:var(--soft);
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
+
+
+/* EDIT BUTTONS */
+.edit-group{
+  display:none;
+  gap:6px;
+}
+
+.edit-mode .edit-group{
+  display:flex;
+}
+
+.edit-left{
+  position:absolute;
+  left:0;
+  transform:translateX(-130%);
+}
+
+.edit-right{
+  margin-left:6px;
+}
+
+.edit-btn{
+  width:32px;
+  height:32px;
+  border-radius:10px;
+  background:var(--soft);
+  border:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  position:relative;
+}
+
+.add-task:hover::after{content:"Add task";}
+.del-task:hover::after{content:"Delete task";}
+.add-petal:hover::after{content:"Add petal";}
+.del-petal:hover::after{content:"Remove petal";}
+
+/* PANEL */
+.panel{
+  display:none;
+  text-align:center;
+  margin-top:10px;
+}
+
+.edit-mode .panel{
+  display:block;
+}
+
+/* 🔥 FIXED TOOLTIP POSITION */
+.panel button{
+  position:relative; /* KEY FIX */
+  padding:8px 16px;
+  border-radius:20px;
+  border:2px solid var(--border);
+  background:transparent;
+  margin:6px;
+  cursor:pointer;
+}
+
+.panel button:hover{
+  background:#ffe4ec;
+}
+
+.btn-clear-task:hover::after{content:"Clear all task text";}
+.btn-clear-petals:hover::after{content:"Reset all petals";}
+.btn-clear-all:hover::after{content:"Clear everything";}
+.btn-reset:hover::after{content:"Restore starter layout";}
+
+#tooltip{
+  position:fixed;
+  top:0;
+  left:0;
+  transform:translate(-50%, -120%);
+  font-size:11px;
+  background:white;
+  border:1px solid var(--border);
+  padding:2px 6px;
+  border-radius:6px;
+  white-space:nowrap;
+  pointer-events:none;
+  opacity:0;
+  z-index:9999;
+}
+
+/* SPARK */
+.sparkle{
+  position:absolute;
+  font-size:18px;
+  animation:spark 0.8s forwards;
+}
+
+@keyframes spark{
+  to{opacity:0; transform:translateY(-40px);}
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+
+<div class="title-wrap">
+  <h1 class="title" id="title">🌸 Daily Bloom 🌸</h1>
+  <div class="edit-pen edit-title" onclick="editTitle()">✏️</div>
+</div>
+
+<div class="title-wrap">
+  <div class="sub" id="subtitle">tiny petals, big growth</div>
+  <div class="edit-pen edit-sub" onclick="editSub()">✏️</div>
+</div>
+
+<div class="menu-btn" onclick="toggleEdit()">🌸</div>
+
+</header>
+
+<div class="container">
+  <div class="inner" id="list"></div>
+</div>
+
+<div class="panel">
+  <button class="btn-clear-task" onclick="clearTasks()">Clear Task</button>
+  <button class="btn-clear-petals" onclick="clearPetals()">Clear Petals</button>
+  <button class="btn-clear-all" onclick="clearAll()">Clear All</button>
+  <button class="btn-reset" onclick="resetDefault()">Reset Default</button>
+</div>
+
+<!-- 🌸 TOOLTIP ELEMENT (MOVE HERE) -->
+<div id="tooltip"></div>
+
+<script>
+
+
+
+const KEY="daily_bloom_v10"
+
+// ✅ SAFE LOAD (FIXES RESET ISSUE)
+let saved = localStorage.getItem(KEY)
+let tasks
+
+try{
+  if(saved){
+    tasks = JSON.parse(saved)
+  }else{
+    tasks = defaultTasks()
+  }
+}catch(e){
+  tasks = defaultTasks()
+}
+
+let editMode=false
+let dragIndex=null
+let tipTimer
+
+
+// 🌸 TOOLTIP
+const tooltip = document.getElementById("tooltip")
+
+function showTip(text){
+  tooltip.innerText = text
+  tooltip.style.opacity = 1
+
+  clearTimeout(tipTimer)
+
+  // ⏱ auto hide after 1.2s
+  tipTimer = setTimeout(()=>{
+    tooltip.style.opacity = 0
+  },1200)
+}
+
+function hideTip(){
+  tooltip.style.opacity = 0
+}
+
+document.addEventListener("mousemove",(e)=>{
+  tooltip.style.left = e.clientX + "px"
+  tooltip.style.top = e.clientY + "px"
+})
+
+
+// 🌸 DEFAULT TASKS
+function defaultTasks(){
+  return [
+    {text:"Task 1",petals:Array(5).fill(false)},
+    {text:"Task 2",petals:Array(5).fill(false)},
+    {text:"Task 3",petals:Array(5).fill(false)}
+  ]
+}
+
+
+// 🌸 SAVE
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(tasks))
+}
+
+
+// 🌸 EDIT MODE
+function toggleEdit(){
+  editMode=!editMode
+  document.body.classList.toggle("edit-mode",editMode)
+  render()
+}
+
+
+// 🌸 EDIT TITLE
+function editTitle(){
+  if(!editMode) return
+  const t=document.getElementById("title")
+  t.contentEditable=true
+  t.focus()
+
+  t.onblur = ()=> t.contentEditable=false
+}
+
+
+// 🌸 EDIT SUBTITLE
+function editSub(){
+  if(!editMode) return
+  const t=document.getElementById("subtitle")
+  t.contentEditable=true
+  t.focus()
+
+  t.onblur = ()=> t.contentEditable=false
+}
+
+
+// 🌸 EXTRA SAFETY SAVE (optional but good)
+window.addEventListener("beforeunload", ()=>{
+  save()
+})
+
+/* CLEAR */
+function clearTasks(){tasks.forEach(t=>t.text=""); save(); render();}
+function clearPetals(){tasks.forEach(t=>t.petals=t.petals.map(()=>false)); save(); render();}
+function clearAll(){tasks.forEach(t=>{t.text=""; t.petals=t.petals.map(()=>false)}); save(); render();}
+function resetDefault(){tasks=defaultTasks(); save(); render();}
+
+/* RENDER */
+function render(){
+
+  const list=document.getElementById("list")
+  list.innerHTML=""
+
+  tasks.forEach((t,i)=>{
+
+    // ✅ CREATE ROW FIRST
+    const row=document.createElement("div")
+    row.className="row"
+
+    // ✅ CREATE HANDLE
+    const handle=document.createElement("div")
+    handle.className="drag-handle"
+    handle.innerText="☰"
+
+    // ✅ DRAG LOGIC
+    handle.draggable=true
+
+    handle.ondragstart=()=>{
+      dragIndex=i
+      row.classList.add("dragging")
+    }
+
+    handle.ondragend=()=>{
+      row.classList.remove("dragging")
+    }
+
+    row.ondragover=(e)=>{
+      e.preventDefault()
+      if(dragIndex===null || dragIndex===i) return
+
+      const dragged=tasks.splice(dragIndex,1)[0]
+      tasks.splice(i,0,dragged)
+      dragIndex=i
+      save()
+      render()
+    }
+
+    const left=document.createElement("div")
+    left.className="edit-group edit-left"
+    left.innerHTML=`<div class="edit-btn add-task">➕</div><div class="edit-btn del-task">➖</div>`
+
+    left.children[0].onclick=()=>{
+      tasks.splice(i+1,0,{text:"New Task",petals:Array(5).fill(false)})
+      save();render()
+    }
+
+    left.children[1].onclick=()=>{
+      tasks.splice(i,1)
+      save();render()
+    }
+
+    const task=document.createElement("div")
+    task.className="task"
+    task.contentEditable=editMode
+    task.innerText=t.text
+
+    // ✅ TOOLTIP (TASK)
+    task.onmouseenter=()=>{
+      if(editMode) showTip("Type task")
+    }
+    task.onmouseleave=hideTip
+
+    // ✅ UPDATED INPUT (THIS IS THE CHANGE)
+    task.oninput=()=>{
+      t.text=task.innerText
+      save()
+
+      hideTip() // 🔥 prevents tooltip blocking typing
+    }
+
+    const petals=document.createElement("div")
+    petals.className="petals"
+
+    // ✅ TOOLTIP (PETALS)
+    petals.onmouseenter=()=>{
+      if(editMode) showTip("Tap to track progress")
+    }
+    petals.onmouseleave=hideTip
+
+
+    t.petals.forEach((p,pi)=>{
+      const petal=document.createElement("div")
+      petal.className="petal"
+      if(p) petal.innerText="🌸"
+
+      petal.onclick=()=>{
+        t.petals[pi]=!p
+        spark(petal)
+        save();render()
+      }
+
+      petals.appendChild(petal)
+    })
+
+    const right=document.createElement("div")
+    right.className="edit-group edit-right"
+    right.innerHTML=`<div class="edit-btn add-petal">➕</div><div class="edit-btn del-petal">➖</div>`
+
+    right.children[0].onclick=()=>{
+      t.petals.push(false)
+      save();render()
+    }
+
+    right.children[1].onclick=()=>{
+      t.petals.pop()
+      save();render()
+    }
+
+    row.append(handle,left,task,petals,right)
+    list.appendChild(row)
+  })
+}
+
+/* SPARK */
+function spark(el){
+  const s=document.createElement("div")
+  s.className="sparkle"
+  s.innerText="✨"
+  el.appendChild(s)
+  setTimeout(()=>s.remove(),800)
+}
+
+/* PETALS */
+setInterval(()=>{
+  const f=document.createElement("div")
+  f.className="floating"
+  f.innerText="🌸"
+  f.style.left=Math.random()*100+"vw"
+  f.style.animationDuration=(6+Math.random()*4)+"s"
+  document.body.appendChild(f)
+  setTimeout(()=>f.remove(),12000)
+},1100)
+
+render()
+
+</script>
+
+
+</body>
+</html>
